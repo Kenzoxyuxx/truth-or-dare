@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON SPIN • TRUTH OR DARE</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Press+Start+2P&display=swap');
+
+        :root {
+            --neon-orange: #ff6600;
+            --neon-red: #ff0066;
+            --neon-purple: #aa00ff;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: radial-gradient(circle at center, #1a0022, #0a0a0a);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        canvas#particles { position: absolute; top:0; left:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+
+        .screen { position: absolute; inset: 0; display: none; flex-direction: column; z-index: 10; }
+
+        /* INTRO SCREEN */
+        #intro-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(10,10,20,0.95);
+        }
+
+        .intro-container {
+            background: rgba(20,20,40,0.85);
+            padding: 40px;
+            border-radius: 24px;
+            border: 3px solid var(--neon-purple);
+            box-shadow: 0 0 60px var(--neon-purple);
+            width: 90%;
+            max-width: 520px;
+        }
+
+        .logo {
+            font-size: 48px;
+            text-align: center;
+            background: linear-gradient(90deg, var(--neon-orange), var(--neon-red));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        h2 { text-align: center; color: #ccc; margin-bottom: 25px; }
+
+        #players-container {
+            max-height: 320px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .player-entry {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        input.player-name {
+            flex: 1;
+            background: #111;
+            border: 2px solid #444;
+            color: white;
+            padding: 14px;
+            border-radius: 12px;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            background: linear-gradient(90deg, var(--neon-orange), var(--neon-red));
+            border: none;
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 25px var(--neon-orange); }
+
+        /* GAME SCREEN */
+        #game-screen {
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0,0,0,0.6);
+            border-bottom: 3px solid var(--neon-purple);
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 420px;
+            height: 420px;
+            margin: 40px auto;
+            cursor: grab;
+        }
+
+        #roulette-canvas {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 50px var(--neon-purple));
+            border-radius: 50%;
+        }
+
+        .pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 30px solid transparent;
+            border-right: 30px solid transparent;
+            border-bottom: 60px solid #ff0066;
+            z-index: 20;
+            filter: drop-shadow(0 0 15px #ff0066);
+        }
+
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #spin-btn {
+            font-size: 28px;
+            padding: 18px 80px;
+            background: linear-gradient(90deg, #ff0066, #aa00ff);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: 900;
+            letter-spacing: 3px;
+        }
+
+        /* RESULT SCREENS */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.92);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, #2a0033, #110022);
+            border: 4px solid var(--neon-purple);
+            padding: 40px;
+            border-radius: 24px;
+            text-align: center;
+            max-width: 460px;
+            box-shadow: 0 0 80px var(--neon-purple);
+        }
+
+        .truth-btn, .dare-btn {
+            width: 48%;
+            padding: 40px 20px;
+            font-size: 28px;
+            font-weight: 900;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.4s;
+        }
+
+        .truth-btn {
+            background: linear-gradient(145deg, #ff8800, #ff4400);
+            color: white;
+        }
+
+        .dare-btn {
+            background: linear-gradient(145deg, #ff0066, #cc0033);
+            color: white;
+        }
+
+        .truth-btn:hover, .dare-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 40px currentColor;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="particles"></canvas>
+
+    <!-- INTRO SCREEN -->
+    <div id="intro-screen" class="screen">
+        <div class="intro-container">
+            <div class="logo">NEON SPIN</div>
+            <h2>TRUTH OR DARE</h2>
+            
+            <div id="players-container"></div>
+            
+            <div class="player-entry">
+                <input type="text" id="new-player-input" class="player-name" placeholder="Add player name...">
+                <button class="btn" onclick="addPlayer()">ADD</button>
+            </div>
+
+            <button class="btn" style="width:100%; margin-top:20px; padding:18px;" onclick="startGame()">START THE GAME</button>
+        </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="screen">
+        <header>
+            <h1 style="font-size:28px;">ROUND <span id="round">1</span></h1>
+        </header>
+
+        <div class="wheel-container" id="wheel-container">
+            <canvas id="roulette-canvas" width="420" height="420"></canvas>
+            <div class="pointer"></div>
+        </div>
+
+        <div class="controls">
+            <button id="spin-btn" class="btn" onclick="spinWheel()">SPIN THE WHEEL</button>
+        </div>
+    </div>
+
+    <!-- FIRST RESULT MODAL -->
+    <div id="first-result-modal" class="modal">
+        <div class="modal-content">
+            <h2 style="color:var(--neon-orange);">SELECTED PLAYER</h2>
+            <div id="selected-player" style="font-size:52px; font-weight:900; margin:25px 0; color:#fff;"></div>
+            <div style="display:flex; gap:15px; justify-content:center; margin-top:30px;">
+                <button class="truth-btn" onclick="chooseChallenge('truth')">TRUTH</button>
+                <button class="dare-btn" onclick="chooseChallenge('dare')">DARE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECOND RESULT MODAL -->
+    <div id="second-result-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="second-title" style="color:#aaa;">THE CHALLENGE GIVER</h3>
+            <div id="giver-player" style="font-size:42px; margin:20px 0;"></div>
+            <div style="margin:30px 0; font-size:18px; opacity:0.9;" id="final-challenge"></div>
+            <button class="btn" onclick="showFinalResult()" style="width:100%;">REVEAL CHALLENGE</button>
+        </div>
+    </div>
+
+    <!-- FINAL CHALLENGE MODAL -->
+    <div id="final-modal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom:20px;">CHALLENGE</h2>
+            <div style="font-size:22px; line-height:1.6;" id="challenge-text"></div>
+            <button class="btn" onclick="resetRound()" style="margin-top:40px; width:100%;">NEXT ROUND</button>
+        </div>
+    </div>
+
+    <script>
+        let players = [];
+        let currentWheelPlayers = [];
+        let isSpinning = false;
+        let rotation = 0;
+        let velocity = 0;
+        let selectedIndex = -1;
+        let currentChallengeType = '';
+        let targetPlayer = '';
+        let giverPlayer = '';
+
+        const canvas = document.getElementById('roulette-canvas');
+        const ctx = canvas.getContext('2d');
+        const center = 210;
+        let sliceAngle = 0;
+
+        // Built-in Questions
+        const truths = [
+            "What's your biggest fear?",
+            "Have you ever had a crush on someone in this group?",
+            "What's the most embarrassing thing you've done while drunk?",
+            "Who was your first kiss?",
+            "What's your wildest fantasy?",
+            "Have you ever lied to get out of trouble?"
+        ];
+
+        const dares = [
+            "Do 20 push-ups while singing a song",
+            "Send a risky text to your most recent contact",
+            "Let the group choose your next profile picture",
+            "Dance like a robot for 30 seconds",
+            "Call someone and confess your love dramatically",
+            "Let the person to your left draw on your face"
+        ];
+
+        function addPlayer() {
+            const input = document.getElementById('new-player-input');
+            const name = input.value.trim();
+            if (name && !players.includes(name)) {
+                players.push(name);
+                renderPlayerList();
+                input.value = '';
+            }
+        }
+
+        function renderPlayerList() {
+            const container = document.getElementById('players-container');
+            container.innerHTML = '<h3 style="margin-bottom:15px; color:#aaa;">PLAYERS</h3>';
+            
+            players.forEach((player, i) => {
+                const div = document.createElement('div');
+                div.style.cssText = 'background:rgba(255,255,255,0.08); padding:12px 16px; border-radius:12px; margin:8px 0; display:flex; justify-content:space-between; align-items:center;';
+                div.innerHTML = `
+                    <span>${player}</span>
+                    <button onclick="removePlayer(${i})" style="background:#440000; color:white; border:none; width:28px; height:28px; border-radius:50%; cursor:pointer;">×</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function removePlayer(index) {
+            players.splice(index, 1);
+            renderPlayerList();
+        }
+
+        function startGame() {
+            if (players.length < 2) {
+                alert("Add at least 2 players!");
+                return;
+            }
+            document.getElementById('intro-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            currentWheelPlayers = [...players];
+            initWheel();
+        }
+
+        function initWheel() {
+            sliceAngle = (Math.PI * 2) / currentWheelPlayers.length;
+            drawWheel();
+        }
+
+        function drawWheel() {
+            ctx.clearRect(0, 0, 420, 420);
+            
+            for (let i = 0; i < currentWheelPlayers.length; i++) {
+                const angle = rotation + (i * sliceAngle);
+                ctx.beginPath();
+                ctx.moveTo(center, center);
+                ctx.arc(center, center, 195, angle, angle + sliceAngle);
+                ctx.fillStyle = i % 2 === 0 ? '#6600aa' : '#aa00ff';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff22';
+                ctx.lineWidth = 6;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(center, center);
+                ctx.rotate(angle + sliceAngle / 2);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 18px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#fff';
+                ctx.fillText(currentWheelPlayers[i].substring(0, 12), 0, -75);
+                ctx.restore();
+            }
+        }
+
+        function animateWheel() {
+            if (Math.abs(velocity) > 0.001) {
+                rotation += velocity;
+                velocity *= 0.978;
+                drawWheel();
+                requestAnimationFrame(animateWheel);
+            }
+        }
+
+        function spinWheel() {
+            if (isSpinning || currentWheelPlayers.length === 0) return;
+            
+            isSpinning = true;
+            velocity = 0.4 + Math.random() * 0.6;
+            
+            document.getElementById('spin-btn').disabled = true;
+            
+            setTimeout(() => {
+                velocity = 0;
+                isSpinning = false;
+                const winnerIndex = Math.floor(Math.random() * currentWheelPlayers.length);
+                targetPlayer = currentWheelPlayers[winnerIndex];
+                
+                // Slow final rotation to winner
+                rotation = rotation % (Math.PI*2);
+                const targetAngle = (winnerIndex * sliceAngle) + (Math.PI / 2);
+                rotation = targetAngle + Math.PI * 4;
+                
+                drawWheel();
+                showFirstResult();
+            }, 2800);
+            
+            animateWheel();
+        }
+
+        function showFirstResult() {
+            document.getElementById('selected-player').textContent = targetPlayer;
+            document.getElementById('first-result-modal').style.display = 'flex';
+        }
+
+        function chooseChallenge(type) {
+            currentChallengeType = type;
+            document.getElementById('first-result-modal').style.display = 'none';
+            
+            // Prepare second spin (exclude target player)
+            currentWheelPlayers = players.filter(p => p !== targetPlayer);
+            if (currentWheelPlayers.length === 0) currentWheelPlayers = [...players];
+            
+            initWheel();
+            document.getElementById('round').textContent = '2';
+            document.getElementById('second-title').textContent = type.toUpperCase() + ' GIVER';
+            
+            setTimeout(() => {
+                spinSecondWheel();
+            }, 800);
+        }
+
+        function spinSecondWheel() {
+            isSpinning = true;
+            velocity = 0.35 + Math.random() * 0.5;
+            
+            setTimeout(() => {
+                velocity = 0;
+                isSpinning = false;
+                const giverIndex = Math.floor(Math.random() * currentWheelPlayers.length);
+                giverPlayer = currentWheelPlayers[giverIndex];
+                
+                document.getElementById('giver-player').textContent = giverPlayer;
+                document.getElementById('second-result-modal').style.display = 'flex';
+            }, 2600);
+            
+            animateWheel();
+        }
+
+        function showFinalResult() {
+            document.getElementById('second-result-modal').style.display = 'none';
+            
+            let challenge = '';
+            if (currentChallengeType === 'truth') {
+                challenge = truths[Math.floor(Math.random() * truths.length)];
+            } else {
+                challenge = dares[Math.floor(Math.random() * dares.length)];
+            }
+            
+            document.getElementById('challenge-text').innerHTML = `
+                <strong>${targetPlayer}</strong> must <span style="color:${currentChallengeType==='truth'?'#ff8800':'#ff0066'}">${currentChallengeType.toUpperCase()}</span> given by <strong>${giverPlayer}</strong><br><br>
+                <em>"${challenge}"</em>
+            `;
+            
+            document.getElementById('final-modal').style.display = 'flex';
+        }
+
+        function resetRound() {
+            document.getElementById('final-modal').style.display = 'none';
+            document.getElementById('round').textContent = '1';
+            currentWheelPlayers = [...players];
+            initWheel();
+            document.getElementById('spin-btn').disabled = false;
+        }
+
+        // Background Particles
+        function createParticles() {
+            const pCanvas = document.getElementById('particles');
+            pCanvas.width = window.innerWidth;
+            pCanvas.height = window.innerHeight;
+            const pctx = pCanvas.getContext('2d');
+            
+            let particles = [];
+            for (let i = 0; i < 140; i++) {
+                particles.push({
+                    x: Math.random() * pCanvas.width,
+                    y: Math.random() * pCanvas.height,
+                    size: Math.random() * 3 + 1,
+                    speed: Math.random() * 0.7 + 0.3,
+                    color: Math.random() > 0.5 ? '#ff660044' : '#ff006644'
+                });
+            }
+            
+            function loop() {
+                pctx.fillStyle = 'rgba(10,10,20,0.12)';
+                pctx.fillRect(0, 0, pCanvas.width, pCanvas.height);
+                
+                particles.forEach(p => {
+                    p.y += p.speed;
+                    if (p.y > pCanvas.height) p.y = 0;
+                    pctx.fillStyle = p.color;
+                    pctx.fillRect(p.x, p.y, p.size, p.size);
+                });
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // Keyboard support
+        document.getElementById('new-player-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addPlayer();
+        });
+
+        // Initialize
+        window.onload = () => {
+            createParticles();
+            
+            // Add some demo players
+            players = ["Alex", "Jordan", "Sam", "Taylor"];
+            renderPlayerList();
+        };
+    </script>
+</body>
+  </html>
