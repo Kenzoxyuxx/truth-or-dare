@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON SPIN • Kejujuran atau Tantangan</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --neon-orange: #ff6600;
+            --neon-red: #ff0066;
+            --neon-purple: #bb00ff;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #0a0514;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        canvas#particles { position: absolute; top:0; left:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+
+        .screen { position: absolute; inset: 0; display: none; flex-direction: column; z-index: 10; }
+
+        /* INTRO */
+        #intro-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #2a0a3d, #0a0514);
+        }
+
+        .intro-content { text-align: center; z-index: 20; }
+
+        .main-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 58px;
+            font-weight: 900;
+            background: linear-gradient(90deg, #ff6600, #ff0066, #bb00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 50px rgba(187,0,255,0.7);
+        }
+
+        /* GAME */
+        #game-screen {
+            padding: 20px;
+        }
+
+        .wheel-wrapper {
+            position: relative;
+            width: 460px;
+            height: 460px;
+            margin: 40px auto;
+            cursor: grab;
+        }
+
+        #roulette-canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            filter: drop-shadow(0 0 70px var(--neon-purple));
+        }
+
+        .pointer {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 38px solid transparent;
+            border-right: 38px solid transparent;
+            border-bottom: 80px solid #ff0066;
+            filter: drop-shadow(0 0 25px #ff0066);
+            z-index: 30;
+        }
+
+        /* MODALS */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(5,2,15,0.96);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, #2a103f, #150822);
+            border: 5px solid var(--neon-purple);
+            border-radius: 28px;
+            padding: 50px 40px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 0 100px var(--neon-purple);
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="particles"></canvas>
+
+    <!-- INTRO -->
+    <div id="intro-screen" class="screen">
+        <div class="intro-content">
+            <div class="main-title">NEON SPIN</div>
+            <h2 style="font-size:28px; color:#ddd;">Kejujuran atau Tantangan</h2>
+            
+            <div id="players-container" style="margin:30px 0; max-height:300px; overflow-y:auto;"></div>
+            
+            <div style="display:flex; gap:10px; max-width:420px; margin:0 auto;">
+                <input type="text" id="new-player-input" placeholder="Nama pemain..." 
+                       style="flex:1; padding:16px; background:#111; border:2px solid #7700aa; border-radius:12px; color:white;">
+                <button onclick="addPlayer()" style="padding:0 28px; background:linear-gradient(#ff6600,#ff0066); border:none; border-radius:12px; color:white; font-weight:bold;">+</button>
+            </div>
+
+            <button onclick="startGame()" style="margin-top:30px; width:100%; max-width:420px; padding:18px; font-size:22px; background:linear-gradient(#bb00ff,#ff0066); border:none; border-radius:50px; font-weight:900;">
+                MULAI PERMAINAN
+            </button>
+        </div>
+    </div>
+
+    <!-- GAME -->
+    <div id="game-screen" class="screen">
+        <div class="wheel-wrapper" id="wheel-wrapper">
+            <canvas id="roulette-canvas" width="460" height="460"></canvas>
+            <div class="pointer"></div>
+        </div>
+
+        <div style="text-align:center;">
+            <button id="spin-btn" onclick="spinWheel()" 
+                    style="padding:18px 100px; font-size:26px; background:linear-gradient(#ff6600,#ff0066); border:none; border-radius:60px; font-weight:900;">
+                PUTAR ROULETTE
+            </button>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="first-modal" class="modal">
+        <div class="modal-content">
+            <p style="color:#aaa;">PEMAIN TERPILIH</p>
+            <div id="first-name" style="font-size:58px; font-weight:900; margin:20px 0;"></div>
+            <div style="display:flex; gap:20px;">
+                <button onclick="chooseType('kejujuran')" style="flex:1; padding:40px; background:linear-gradient(#ff8800,#ff5500); border:none; border-radius:20px; font-size:26px; font-weight:900;">KEJUJURAN</button>
+                <button onclick="chooseType('tantangan')" style="flex:1; padding:40px; background:linear-gradient(#ff0066,#cc0033); border:none; border-radius:20px; font-size:26px; font-weight:900;">TANTANGAN</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="final-modal" class="modal">
+        <div class="modal-content">
+            <div id="final-header" style="font-size:24px;"></div>
+            <div id="challenge-text" style="margin:30px 0; font-size:22px; line-height:1.6; padding:25px; background:rgba(0,0,0,0.4); border-radius:16px;"></div>
+            <button onclick="nextRound()" style="width:100%; padding:18px; background:linear-gradient(#bb00ff,#ff0066); border:none; border-radius:16px; font-size:20px;">MAIN LAGI</button>
+        </div>
+    </div>
+
+    <script>
+        let players = [];
+        let rotation = Math.PI * 1.5; // start from top
+        let velocity = 0;
+        let isSpinning = false;
+        let targetPlayer = '';
+        let giverPlayer = '';
+        let challengeType = '';
+
+        const canvas = document.getElementById('roulette-canvas');
+        const ctx = canvas.getContext('2d');
+        const center = 230;
+        let sliceAngle = 0;
+
+        const truths = ["Apa rahasia terbesar kamu?", "Siapa crush rahasiamu?", "Hal paling memalukan yang pernah kamu lakukan?"];
+        const dares = ["Joget 20 detik", "Kirim VN random ke grup", "Puji orang di sebelahmu secara berlebihan"];
+
+        function addPlayer() {
+            const input = document.getElementById('new-player-input');
+            const name = input.value.trim();
+            if (name && !players.includes(name)) {
+                players.push(name);
+                renderPlayers();
+                input.value = '';
+            }
+        }
+
+        function renderPlayers() {
+            const container = document.getElementById('players-container');
+            container.innerHTML = '<h3 style="color:#aaa; margin-bottom:15px;">PEMAIN</h3>';
+            players.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.style.cssText = 'background:rgba(255,255,255,0.08); padding:12px 16px; border-radius:12px; margin:8px 0; display:flex; justify-content:space-between;';
+                div.innerHTML = `${p} <button onclick="removePlayer(${i})" style="background:#440000; color:white; border:none; width:28px; height:28px; border-radius:50%;">×</button>`;
+                container.appendChild(div);
+            });
+        }
+
+        function removePlayer(i) {
+            players.splice(i, 1);
+            renderPlayers();
+        }
+
+        function startGame() {
+            if (players.length < 2) return alert("Minimal 2 pemain!");
+            document.getElementById('intro-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            initWheel();
+        }
+
+        function initWheel() {
+            sliceAngle = (Math.PI * 2) / players.length;
+            drawWheel();
+        }
+
+        function drawWheel() {
+            ctx.clearRect(0, 0, 460, 460);
+            for (let i = 0; i < players.length; i++) {
+                const angle = rotation + i * sliceAngle;
+                ctx.beginPath();
+                ctx.moveTo(center, center);
+                ctx.arc(center, center, 200, angle, angle + sliceAngle);
+                ctx.fillStyle = i % 2 === 0 ? '#7700bb' : '#dd00ff';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff22';
+                ctx.lineWidth = 8;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(center, center);
+                ctx.rotate(angle + sliceAngle/2);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 20px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.fillText(players[i].substring(0,10), 0, -85);
+                ctx.restore();
+            }
+        }
+
+        function animate() {
+            if (Math.abs(velocity) > 0.001) {
+                rotation += velocity;
+                velocity *= 0.975;
+                drawWheel();
+                requestAnimationFrame(animate);
+            }
+        }
+
+        function spinWheel() {
+            if (isSpinning || players.length < 2) return;
+            isSpinning = true;
+            velocity = 0.6 + Math.random() * 0.7;
+            document.getElementById('spin-btn').disabled = true;
+
+            animate();
+
+            setTimeout(() => {
+                velocity = 0.08 + Math.random() * 0.06;
+                setTimeout(() => {
+                    isSpinning = false;
+                    determineWinner();
+                }, 1800);
+            }, 2200);
+        }
+
+        function determineWinner() {
+            const normalized = ((rotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+            const index = Math.floor((players.length - (normalized / sliceAngle)) % players.length);
+            targetPlayer = players[index];
+
+            document.getElementById('first-name').textContent = targetPlayer;
+            document.getElementById('first-modal').style.display = 'flex';
+        }
+
+        function chooseType(type) {
+            challengeType = type;
+            document.getElementById('first-modal').style.display = 'none';
+
+            // Second spin
+            setTimeout(() => {
+                velocity = 0.55 + Math.random() * 0.6;
+                isSpinning = true;
+                animate();
+
+                setTimeout(() => {
+                    velocity = 0.05;
+                    setTimeout(() => {
+                        isSpinning = false;
+                        const idx = Math.floor(Math.random() * players.length);
+                        giverPlayer = players[idx] === targetPlayer ? players[(idx+1)%players.length] : players[idx];
+                        showFinalChallenge();
+                    }, 1200);
+                }, 2200);
+            }, 600);
+        }
+
+        function showFinalChallenge() {
+            const list = challengeType === 'kejujuran' ? truths : dares;
+            const text = list[Math.floor(Math.random() * list.length)];
+
+            document.getElementById('final-header').innerHTML = `${targetPlayer} <span style="color:#aaa">dari</span> ${giverPlayer}`;
+            document.getElementById('challenge-text').innerHTML = `<strong>${challengeType.toUpperCase()}</strong><br><br>${text}`;
+            document.getElementById('final-modal').style.display = 'flex';
+        }
+
+        function nextRound() {
+            document.getElementById('final-modal').style.display = 'none';
+            document.getElementById('spin-btn').disabled = false;
+            initWheel();
+        }
+
+        function initParticles() {
+            const c = document.getElementById('particles');
+            c.width = window.innerWidth;
+            c.height = window.innerHeight;
+            const ctxp = c.getContext('2d');
+            let ps = [];
+            for (let i = 0; i < 180; i++) {
+                ps.push({x: Math.random()*c.width, y: Math.random()*c.height, s: Math.random()*3+1, sp: Math.random()*0.7+0.3});
+            }
+            function loop() {
+                ctxp.fillStyle = 'rgba(10,5,25,0.12)';
+                ctxp.fillRect(0,0,c.width,c.height);
+                ps.forEach(p => { p.y += p.sp; if(p.y > c.height) p.y = 0; ctxp.fillStyle = 'rgba(187,0,255,0.4)'; ctxp.fillRect(p.x, p.y, p.s, p.s); });
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        window.onload = () => {
+            initParticles();
+            document.getElementById('intro-screen').style.display = 'flex';
+            players = ["Andi", "Budi", "Citra", "Dina"];
+            renderPlayers();
+        };
+    </script>
+</body>
+</html>
